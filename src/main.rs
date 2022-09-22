@@ -2,7 +2,7 @@ use serde::Serialize;
 use std::time::Duration;
 
 use clap::Parser;
-use color_eyre::eyre::{bail, Result};
+use color_eyre::eyre::Result;
 use yahoo_finance_api::{Quote, YahooConnector};
 
 #[derive(Parser, Debug)]
@@ -68,19 +68,20 @@ async fn main() -> Result<()> {
             match quotes {
                 Ok(q) => {
                     let last_quote = q.last_quote()?;
-                    println!("received data for stock \"{}\" at timestamp {}", stock, last_quote.timestamp);
+                    println!(
+                        "received data for stock \"{}\" at timestamp {}",
+                        stock, last_quote.timestamp
+                    );
                     writer.serialize(CSVQuote::new(stock, last_quote))?;
                 }
-                Err(_) => {
-                    bail!(format!("data for stock \"{}\" not found!", &stock));
-                }
+                Err(e) => eprintln!("fetching data for stock \"{}\" failed: {:?}", stock, e),
             }
         }
         tokio::fs::write(&args.csv, String::from_utf8(writer.into_inner()?)?).await?;
 
         match args.delay {
             0 => return Ok(()),
-            _ => tokio::time::sleep(Duration::from_secs(args.delay)).await
+            _ => tokio::time::sleep(Duration::from_secs(args.delay)).await,
         }
     }
 }
